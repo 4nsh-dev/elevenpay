@@ -57,3 +57,4 @@ npm run format
 5. Every money movement must use the same pipeline: intent -> prepare -> approve -> sign -> record.
 6. AI may prepare intents, but it must never execute payments.
 7. Supabase records coordination state and ledger metadata; chain state remains the source of truth for funds.
+# elevenpay
