@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "ElevenPay",
+    "slug": "elevenpay",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "elevenpay",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0F14",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0B0F14",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.anshdeep.elevenpay"
+    },
+    "android": {
+      "package": "com.anshdeep.elevenpay",
+      "adaptiveIcon": {
+        "backgroundColor": "#0B0F14"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow ElevenPay to scan wallet QR codes."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 29
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

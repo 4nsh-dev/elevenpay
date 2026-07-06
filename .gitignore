@@ -1,0 +1,29 @@
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+ios/
+android/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Env — never commit secrets
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# Local tooling
+graphify-out/
+.claude/
+npm-debug.*
+*.tsbuildinfo
