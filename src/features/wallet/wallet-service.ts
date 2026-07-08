@@ -1,5 +1,9 @@
+import { applyDemoStateToStores, isDemoModeActive } from '@/features/demo';
+import { clearLedger, loadLedger } from '@/features/payments/transaction-storage';
 import { wdkService } from '@/services/wdk';
 import { useWalletStore } from '@/stores/wallet';
+
+import { syncBalanceToSupabase, syncWalletWithSupabase } from './wallet-sync';
 
 function walletErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Wallet operation failed.';
@@ -9,8 +13,15 @@ export async function hydrateWallet(ownerId: string | null | undefined) {
   const store = useWalletStore.getState();
   store.setWalletError(null);
 
+  // Demo mode: serve the sandbox snapshot; never touch WDK, Supabase, or keys.
+  if (isDemoModeActive()) {
+    applyDemoStateToStores();
+    return;
+  }
+
   if (!ownerId) {
     store.clearWallet();
+    clearLedger();
     return;
   }
 
@@ -26,8 +37,16 @@ export async function hydrateWallet(ownerId: string | null | undefined) {
     store.setWallet({ address, blockchain: 'ethereum-sepolia' });
     store.setTransactions(await wdkService.getTransactionHistory(ownerId));
 
+    // Mirror wallet metadata into Supabase (register once, then no-op) and
+    // refresh the persistent ledger (flushes the offline outbox first).
+    // Fire-and-forget: sync never delays or breaks hydration.
+    void syncWalletWithSupabase({ address, blockchain: 'ethereum-sepolia' });
+    void loadLedger();
+
     try {
-      store.setBalance(await wdkService.getBalance(ownerId));
+      const balance = await wdkService.getBalance(ownerId);
+      store.setBalance(balance);
+      void syncBalanceToSupabase(balance);
     } catch (balanceError) {
       store.setWalletError(walletErrorMessage(balanceError));
     }
@@ -46,8 +65,14 @@ export async function createWalletForUser(ownerId: string) {
     store.setWallet(wallet);
     store.setTransactions(await wdkService.getTransactionHistory(ownerId));
 
+    // Register the brand-new wallet against the signed-in profile.
+    void syncWalletWithSupabase(wallet);
+    void loadLedger();
+
     try {
-      store.setBalance(await wdkService.getBalance(ownerId));
+      const balance = await wdkService.getBalance(ownerId);
+      store.setBalance(balance);
+      void syncBalanceToSupabase(balance);
     } catch (balanceError) {
       store.setWalletError(walletErrorMessage(balanceError));
     }

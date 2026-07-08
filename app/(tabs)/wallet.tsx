@@ -1,10 +1,15 @@
 import { useRouter } from 'expo-router';
-import { RefreshCw, Wallet } from 'lucide-react-native';
-import { useMemo } from 'react';
+import { RefreshCw, ShieldAlert, Wallet } from 'lucide-react-native';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
-import { GlassCard, PrimaryButton, Screen } from '@/components/ui';
+import { GlassCard, PrimaryButton, Screen, SecondaryButton } from '@/components/ui';
 import { RecentActivity } from '@/components/wallet';
+import {
+  hydrateBackupStatus,
+  shouldShowBackupReminder,
+  snoozeBackupReminder,
+} from '@/features/recovery';
 import { buildSampleHistory, refreshWallet, toActivityItem } from '@/features/wallet';
 import { formatUsdt, shortenAddress } from '@/lib/format';
 import { useSessionStore } from '@/stores/session';
@@ -21,6 +26,27 @@ export default function WalletScreen() {
   const transactions = useWalletStore((s) => s.transactions);
   const isWalletLoading = useWalletStore((s) => s.isWalletLoading);
   const walletError = useWalletStore((s) => s.walletError);
+  const isBackedUp = useWalletStore((s) => s.isBackedUp);
+  const [reminderVisible, setReminderVisible] = useState(false);
+
+  // Backup reminder: read the device-only status and show the banner until
+  // the phrase is verified (a snooze silences it for 24 hours).
+  useEffect(() => {
+    let active = true;
+    hydrateBackupStatus(userId)
+      .then((status) => {
+        if (active) setReminderVisible(shouldShowBackupReminder(status));
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  const dismissReminder = () => {
+    setReminderVisible(false);
+    snoozeBackupReminder(userId).catch(() => undefined);
+  };
 
   const recent = useMemo<ActivityItem[]>(
     () => (transactions.length ? transactions.map(toActivityItem) : buildSampleHistory()),
@@ -39,6 +65,29 @@ export default function WalletScreen() {
             WDK signs locally. Supabase never receives private keys.
           </Text>
         </View>
+
+        {reminderVisible && !isBackedUp ? (
+          <View className="rounded-input border border-state-warning/30 bg-state-warning/10 p-4">
+            <View className="flex-row items-center gap-2">
+              <ShieldAlert size={18} color={colors.brand.primary} strokeWidth={1.75} />
+              <Text className="flex-1 font-inter-semibold text-[15px] text-content-primary">
+                Back up your recovery phrase
+              </Text>
+            </View>
+            <Text className="mt-2 font-inter text-[13px] leading-5 text-content-secondary">
+              Your 12 words exist only on this phone. If you lose it without a backup, your funds
+              are gone — writing them down and verifying takes about a minute.
+            </Text>
+            <View className="mt-3 flex-row gap-3">
+              <View className="flex-1">
+                <PrimaryButton label="Back up now" onPress={() => router.push('/recovery')} />
+              </View>
+              <View className="flex-1">
+                <SecondaryButton label="Later" onPress={dismissReminder} />
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         <GlassCard>
           <View className="gap-5">

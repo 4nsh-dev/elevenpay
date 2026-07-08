@@ -5,7 +5,10 @@ import { ActivityIndicator, Text, View } from 'react-native';
 
 import { PrimaryButton, SecondaryButton } from '@/components/ui';
 import { ProtectedRoute } from '@/features/auth';
+import { recordAndBroadcast } from '@/features/payments';
 import { refreshTransactionHistory, refreshWallet } from '@/features/wallet';
+import { confirmSplitLegPaid } from '@/features/split-bill';
+import { confirmWatchPartySeat } from '@/features/watch-party';
 import { formatUsdt, shortenAddress } from '@/lib/format';
 import { wdkService, type PaymentDraft, type PreparedTransfer } from '@/services/wdk';
 import { useSessionStore } from '@/stores/session';
@@ -78,7 +81,12 @@ export default function ConfirmSheet() {
     setPhase('signing');
 
     try {
-      const result = await wdkService.signAndBroadcast(prepared, userId);
+      const result = await recordAndBroadcast(prepared, {
+        ownerId: userId,
+        receiverWalletId: prepared.draft.metadata?.receiverWalletId ?? null,
+      });
+      await confirmWatchPartySeat(prepared.draft);
+      await confirmSplitLegPaid(prepared.draft);
       setHash(result.transactionHash);
       setConfirmedDraft(prepared.draft);
       setPendingDraft(null);
